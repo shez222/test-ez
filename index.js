@@ -131,10 +131,10 @@ app.get(
 
       // Set JWT token as HTTP-only cookie (ensure `secure: true` is used in production with HTTPS)
       res.cookie('token', token, {
-        httpOnly: true,
+        // httpOnly: true,
         maxAge: 3600000, // 1 hour
-        secure: true,     // Only sent over HTTPS
-        sameSite: 'Strict'
+        // secure: true,     // Only sent over HTTPS
+        // sameSite: 'Strict'
       });
 
       // Redirect to frontend after setting the cookie (without exposing sensitive data in the URL)
