@@ -18,7 +18,7 @@ const jackpotRoutes = require('./routes/jackpotRoutes');
 const Jackpot = require('./models/jackpotSchema');
 const isAuth = require('./middleware/isAuth');
 const front_url = 'http://localhost:3000'
-const back_url = 'http://localhost:5000'
+const back_url = 'https://app-4d69ec6f-9dfc-4ed7-9ca8-01cf09024c96.cleverapps.io'
 // Initialize the app
 const app = express();
 const PORT = process.env.PORT || 5000;
