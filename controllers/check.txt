@@ -1,0 +1,257 @@
+const Jackpot = require('./models/jackpotSchema');
+const io = require('./socket');
+const weightedRandomSelection = require('./utils/weightedRandomSelection');
+const { manager } = require('./steamTradeBot'); // Import Steam trade bot manager
+
+/**
+ * Timer settings
+ */
+let roundDuration = 60; // in seconds (adjust as needed)
+let roundStartTime = null;
+let timerInterval = null;
+
+/**
+ * Spin settings
+ */
+const spinDuration = 5000; // Spin duration in milliseconds (e.g., 5 seconds)
+const spinStartDelay = 1000; // Delay before spin starts in milliseconds (e.g., 1 second)
+
+/**
+ * Calculates the time left in the current round.
+ * @returns {number} Time left in seconds.
+ */
+function getTimeLeft() {
+  if (!roundStartTime) return roundDuration;
+  const elapsed = Math.floor((Date.now() - roundStartTime) / 1000);
+  return Math.max(roundDuration - elapsed, 0);
+}
+
+/**
+ * Starts the round timer.
+ */
+function startRoundTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+
+  roundStartTime = Date.now();
+
+  io.getIO().emit('timer', { timeLeft: roundDuration });
+
+  timerInterval = setInterval(async () => {
+    const timeLeft = getTimeLeft();
+    io.getIO().emit('timer', { timeLeft });
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      roundStartTime = null;
+      timerInterval = null;
+      // End the round
+      await endRound();
+    }
+  }, 1000);
+}
+
+/**
+ * Send trade offer with Promises and retry logic
+ */
+const sendTradeOffer = (offer, retries = 3) => {
+  return new Promise((resolve, reject) => {
+    const attemptSend = (attemptsLeft) => {
+      offer.send(async (err, status) => {
+        if (err) {
+          console.error('Trade offer failed:', err);
+
+          if (attemptsLeft > 0 && err.message.includes("items already in trade")) {
+            console.log(`Retrying trade offer. Attempts left: ${attemptsLeft - 1}`);
+            await delay(3000); // Wait 3 seconds before retrying
+            return attemptSend(attemptsLeft - 1);
+          }
+          
+          return reject(new Error('Failed to send trade offer after retries.'));
+        }
+
+        if (status === 'pending') {
+          console.log('Trade offer sent, awaiting mobile confirmation.');
+        } else {
+          console.log('Trade offer sent successfully.');
+        }
+
+        resolve(status);
+      });
+    };
+
+    attemptSend(retries);
+  });
+};
+
+/**
+ * Check if items are still available in the bot's inventory
+ */
+const checkItemAvailability = async (items) => {
+  return new Promise((resolve, reject) => {
+    manager.getInventoryContents(252490, 2, true, (err, inventory) => { // 730 for CS:GO, contextid 2
+      if (err) return reject(err);
+      console.log("bot",inventory);
+      console.log("jack items",items);
+      
+      
+      const availableItems = inventory.map(item => item.assetid);
+      const available = items.filter(item => availableItems.includes(item.assetId));
+      resolve(available);
+    });
+  });
+};
+
+/**
+ * Helper function to introduce a delay
+ */
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Transfer items based on winner distribution (90% to the winner, 10% kept in the bot)
+ */
+const transferWinnings = async (winner, winnerItems, adminItems) => {
+  try {
+    if (!winner.tradeUrl) {
+      throw new Error('Winner does not have a valid trade offer URL.');
+    }
+
+    // Check availability of items
+    const availableItems = await checkItemAvailability(winnerItems);
+    if (availableItems.length === 0) {
+      throw new Error('No available items to transfer. Items might be reserved or already in trade.');
+    }
+
+    // Create a trade offer for the winner (90% of items)
+    const winnerOffer = manager.createOffer(winner.tradeUrl);
+    availableItems.forEach(item => {
+      winnerOffer.addMyItem({
+        assetid: item.assetId,
+        appid: item.appId,
+        contextid: '2',
+      });
+    });
+    winnerOffer.setMessage('Congratulations! You have won the jackpot!');
+    
+    // Send trade offer with retry logic
+    await sendTradeOffer(winnerOffer);
+
+    console.log(`Trade offer sent to winner (${winner._id}) successfully.`);
+
+    // 10% of items are kept in the bot's inventory
+    if (adminItems.length > 0) {
+      console.log(`Bot is keeping 10% of items (${adminItems.length} items) for admin.`);
+    }
+  } catch (error) {
+    console.error('Error transferring winnings:', error);
+  }
+};
+
+/**
+ * Ends the current jackpot round by selecting a winner based on weighted random selection.
+ */
+async function endRound() {
+  try {
+    // Retrieve the current jackpot in progress
+    let jackpot = await Jackpot.findOne({ status: 'in_progress' })
+      .populate('participants.user')
+      .populate('participants.items');
+
+    if (!jackpot) {
+      console.log('No active jackpot to end.');
+      return;
+    }
+
+    // Calculate each participant's total contribution
+    const participantsWithValue = jackpot.participants.map(participant => {
+      const totalContribution = participant.items.reduce((acc, item) => {
+        const itemValue = parseFloat(item.price);
+        return acc + (isNaN(itemValue) ? 0 : itemValue);
+      }, 0);
+      return {
+        participant,
+        totalContribution,
+      };
+    });
+
+    // Calculate the overall total value
+    const overallTotal = participantsWithValue.reduce((acc, p) => acc + p.totalContribution, 0);
+
+    if (overallTotal === 0) {
+      console.log('No valid contributions to determine a winner.');
+      jackpot.status = 'completed';
+      await jackpot.save();
+      return;
+    }
+
+    // Select the winner based on weighted random selection
+    const winnerParticipant = weightedRandomSelection(participantsWithValue, overallTotal);
+
+    if (!winnerParticipant) {
+      console.log('Failed to select a winner.');
+      jackpot.status = 'completed';
+      await jackpot.save();
+      return;
+    }
+
+    // Distribute items between winner (90%) and admin/bot (10%)
+    const totalItems = winnerParticipant.participant.items;
+    const itemSplitIndex = Math.floor(totalItems.length * 0.9); // Keep 10% for bot/admin
+    const winnerItems = totalItems.slice(0, itemSplitIndex);
+    const adminItems = totalItems.slice(itemSplitIndex);
+
+    // Transfer 90% of items to winner, and keep 10% for the bot
+    await transferWinnings(winnerParticipant.participant.user, winnerItems, adminItems);
+
+    // Update the jackpot with the winner
+    jackpot.status = 'completed';
+    jackpot.winner = winnerParticipant.participant.user._id;
+    await jackpot.save();
+
+    // Emit the round result to all clients
+    io.getIO().emit('roundResult', {
+      winner: {
+        id: winnerParticipant.participant.user._id,
+        username: winnerParticipant.participant.user.username,
+        items: winnerItems,
+        totalValue: winnerParticipant.totalContribution,
+        skinCount: winnerItems.length,
+        img: winnerParticipant.participant.user.avatar.small || "/default-avatar.png",
+        color: winnerParticipant.participant.color,
+      },
+    });
+
+    // Emit the 'spin' event to synchronize the wheel spin across all clients
+    io.getIO().emit('spin', {
+      winnerId: {
+        id: winnerParticipant.participant.user._id,
+        username: winnerParticipant.participant.user.username,
+        items: winnerItems,
+        totalValue: winnerParticipant.totalContribution,
+        skinCount: winnerItems.length,
+        img: winnerParticipant.participant.user.avatar.small || "/default-avatar.png",
+        color: winnerParticipant.participant.color,
+      },
+      startTime: Date.now() + spinStartDelay,
+      duration: spinDuration,
+    });
+
+    io.getIO().emit('updatedJackPot', {
+      msg: 'success',
+    });
+
+    // Start a new jackpot round
+    const newJackpot = new Jackpot({ status: 'waiting', totalValue: 0, participants: [] });
+    await newJackpot.save();
+
+  } catch (error) {
+    console.error('Error ending round:', error);
+  }
+}
+
+module.exports = {
+  startRoundTimer,
+  getTimeLeft,
+  endRound,
+};
