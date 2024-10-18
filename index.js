@@ -134,7 +134,7 @@ app.get(
         httpOnly: true,
         maxAge: 3600000, // 1 hour
         secure: true,     // Only sent over HTTPS
-        sameSite: 'none',
+        sameSite: 'Strict',
         domain: `${front_url}` 
       });
 
