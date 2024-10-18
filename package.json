@@ -22,6 +22,7 @@
     "mongoose": "^8.5.3",
     "node-steam-openid": "^1.2.3",
     "nodemon": "^3.1.4",
+    "npm": "^10.9.0",
     "passport": "^0.7.0",
     "passport-openid": "^0.4.0",
     "passport-steam": "^1.0.18",
