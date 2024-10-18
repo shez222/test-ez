@@ -135,7 +135,7 @@ app.get(
         maxAge: 3600000, // 1 hour
         secure: true,     // Only sent over HTTPS
         sameSite: 'Strict',
-        domain: 'http://localhost:3000' 
+        domain: `${front_url}` 
       });
 
       // Redirect to frontend after setting the cookie (without exposing sensitive data in the URL)
