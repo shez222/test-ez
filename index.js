@@ -28,8 +28,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: `${front_url}`,
-    methods: ['GET', 'POST'],
+    origin: "*",
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS', 'DELETE'],
     credentials: true,
   })
 );
@@ -38,7 +38,7 @@ app.use(
 const http = require('http').Server(app);
 const io = require('./socket').init(http, {
   cors: {
-    origin: `${front_url}`, // Allow only your client application's origin
+    origin: "*", // Allow only your client application's origin
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS', 'DELETE'], // Allowable methods
     credentials: true, // Optional: if you need cookies or authorization headers
   },
