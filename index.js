@@ -17,7 +17,7 @@ const { getInventory } = require('./utils/getInventory');
 const jackpotRoutes = require('./routes/jackpotRoutes');
 const Jackpot = require('./models/jackpotSchema');
 const isAuth = require('./middleware/isAuth');
-const front_url = 'http://localhost:3000'
+const front_url = 'https://ez-skin-trade.vercel.app'
 const back_url = 'https://app-4d69ec6f-9dfc-4ed7-9ca8-01cf09024c96.cleverapps.io'
 // Initialize the app
 const app = express();
