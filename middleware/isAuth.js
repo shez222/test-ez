@@ -4,6 +4,8 @@ const User = require('../models/userSchema')
 
 const isAuth = async (req, res, next) => {
   const user = req.cookies.FBI; // Assuming you're storing the token in cookies
+  console.log(req.cookies);
+  
   
   let existingUser = await User.findOne({ _id: user });
   
