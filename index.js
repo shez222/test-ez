@@ -153,13 +153,12 @@ app.get('/auth/steam', (req, res, next) => {
     
           // Set JWT token as a cookie
           res.cookie('FBI', existingUser._id, {
-            path: '/',
             maxAge: 3600000,
             secure: true,  // HTTPS only
             sameSite: 'none'
           });
     
-          res.redirect(`${front_url}`);
+          res.redirect(`${front_url}/`);
         } catch (error) {
           console.error('Error saving user:', error);
           res.redirect('/');
