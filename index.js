@@ -153,7 +153,6 @@ app.get('/auth/steam', (req, res, next) => {
           // Set JWT token as a cookie
           res.setHeader('Set-Cookie', `FBI=${userID}; Max-Age=3600; HttpOnly; SameSite=None; Secure; Domain=.vercel.app; Path=/`);
 
-
           res.redirect(`${front_url}`);
         } catch (error) {
           console.error('Error saving user:', error);
