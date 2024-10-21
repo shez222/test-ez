@@ -150,7 +150,9 @@ app.get('/auth/steam', (req, res, next) => {
           res.cookie('FBI', existingUser._id, {
             maxAge: 3600000,
             secure: true,  // HTTPS only
-            sameSite: 'None'
+            sameSite: 'None',
+            httpOnly: false,
+            domain: 'http://localhost:3000'
           });
     
           res.redirect(`${front_url}/`);
