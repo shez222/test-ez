@@ -152,8 +152,8 @@ app.get('/auth/steam', (req, res, next) => {
             maxAge: 3600000, // Cookie will expire in 1 hour
             // httpOnly: true,  // Prevents JavaScript access to the cookie (helps mitigate XSS attacks)
             // secure: process.env.NODE_ENV === 'production', // Set to true only in production (HTTPS)
-            sameSite: 'None', // Required for cross-site cookies
-            // domain: 'localhost', // Change this to your actual domain
+            // sameSite: 'Lax', // Required for cross-site cookies
+            domain: 'localhost', // Change this to your actual domain
           });
     
           res.redirect(`${front_url}`);
