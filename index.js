@@ -150,7 +150,7 @@ app.get('/auth/steam', (req, res, next) => {
           // Set JWT token as a cookie
           res.cookie('FBI', existingUser._id, {
             maxAge: 3600000, // Cookie will expire in 1 hour
-            httpOnly: true,  // Prevents JavaScript access to the cookie (helps mitigate XSS attacks)
+            // httpOnly: true,  // Prevents JavaScript access to the cookie (helps mitigate XSS attacks)
             // secure: process.env.NODE_ENV === 'production', // Set to true only in production (HTTPS)
             sameSite: 'None', // Required for cross-site cookies
             // domain: 'localhost', // Change this to your actual domain
