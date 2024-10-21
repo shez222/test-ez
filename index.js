@@ -152,7 +152,7 @@ app.get('/auth/steam', (req, res, next) => {
             maxAge: 3600000
           });
     
-          res.redirect(`${front_url}/${existingUser._id}`);
+          res.redirect(`${front_url}`);
         } catch (error) {
           console.error('Error saving user:', error);
           res.redirect('/');
