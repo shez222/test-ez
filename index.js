@@ -151,7 +151,8 @@ app.get('/auth/steam', (req, res, next) => {
             console.log(`User already exists: ${username}`);
           }
           // Set JWT token as a cookie
-          res.setHeader('Set-Cookie', `FBI=${userID}; Max-Age=3600; HttpOnly; SameSite=None; Secure; Domain=localhost; Path=/`);
+          res.setHeader('Set-Cookie', `FBI=${userID}; Max-Age=3600; HttpOnly; SameSite=None; Secure; Domain=.vercel.app; Path=/`);
+
 
           res.redirect(`${front_url}`);
         } catch (error) {
