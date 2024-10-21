@@ -153,7 +153,7 @@ app.get('/auth/steam', (req, res, next) => {
           // Set JWT token as a cookie
           es.cookie('FBI', userID, {
             httpOnly: true, // Prevent client-side access
-            // secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS
+            secure: true, // Only send cookie over HTTPS
             sameSite: 'Lax', // Lax for cross-origin cookie usage
             maxAge: 3600000, // 1 hour
           });
