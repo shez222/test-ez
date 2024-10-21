@@ -71,7 +71,7 @@ passport.use(
     {
       returnURL: `${back_url}/auth/steam`,
       // returnURL: '`${front_url}`',
-      realm: `${back_url}`,
+      realm: `${back_url}/`,
       apiKey: process.env.STEAM_API_KEY,
     },
     (identifier, profile, done) => {
@@ -151,12 +151,7 @@ app.get('/auth/steam', (req, res, next) => {
             console.log(`User already exists: ${username}`);
           }
           // Set JWT token as a cookie
-          es.cookie('FBI', userID, {
-            httpOnly: true, // Prevent client-side access
-            secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS
-            sameSite: 'Lax', // Lax for cross-origin cookie usage
-            maxAge: 3600000, // 1 hour
-          });
+          res.setHeader('Set-Cookie', `FBI=${userID}; Max-Age=3600; SameSite=None; Domain=vercel.com; Path=/`);
 
           res.redirect(`${front_url}`);
         } catch (error) {
