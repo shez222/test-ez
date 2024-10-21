@@ -148,11 +148,7 @@ app.get('/auth/steam', (req, res, next) => {
     
           // Set JWT token as a cookie
           res.cookie('FBI', existingUser._id, {
-            maxAge: 3600000,
-            secure: true,  // HTTPS only
-            sameSite: 'None',
-            httpOnly: false,
-            domain: 'http://localhost:3000'
+            maxAge: 3600000
           });
     
           res.redirect(`${front_url}/`);
