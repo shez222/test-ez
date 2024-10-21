@@ -120,6 +120,7 @@ app.get('/auth/steam', (req, res, next) => {
           medium: user.photos[1].value,
           large: user.photos[2].value,
         };
+        let userID;
     
     
         // Create JWT token
@@ -141,21 +142,17 @@ app.get('/auth/steam', (req, res, next) => {
               token: token,
             });
             await newUser.save();
+            userID = newUser._id
             console.log(`New user created: ${username}`);
           } else {
             existingUser.token = token;
             await existingUser.save();
+            userID = existingUser._id
             console.log(`User already exists: ${username}`);
           }
           // Set JWT token as a cookie
-          res.cookie('FBI', existingUser._id, {
-            maxAge: 3600000, // Cookie will expire in 1 hour
-            httpOnly: true,  // Prevents JavaScript access to the cookie (helps mitigate XSS attacks)
-            // secure: process.env.NODE_ENV === 'production', // Set to true only in production (HTTPS)
-            // sameSite: 'None', // Required for cross-site cookies
-            // domain: 'localhost', // Change this to your actual domain
-          });
-    
+          res.setHeader('Set-Cookie', `FBI=${userID}; Max-Age=3600; HttpOnly; SameSite=None; Secure; Domain=.example.com; Path=/`);
+
           res.redirect(`${front_url}`);
         } catch (error) {
           console.error('Error saving user:', error);
