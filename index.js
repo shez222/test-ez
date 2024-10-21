@@ -156,7 +156,7 @@ app.get('/auth/steam', (req, res, next) => {
             secure: true, // Only send cookie over HTTPS
             sameSite: 'Lax', // Lax for cross-origin cookie usage
             maxAge: 3600000, // 1 hour,
-            domain:'*'
+            domain: front_url
           });
 
           res.redirect(`${front_url}`);
