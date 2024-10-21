@@ -49,11 +49,6 @@ app.use(session({
   secret: 'your-session-secret', // Use a secure, random string
   resave: false,
   saveUninitialized: true,
-  cookie: {
-      // secure: true, // Set to true if using HTTPS
-      // sameSite: 'Lax',
-      maxAge: 3600000 // 1 hour
-  }
 }));
 
 
@@ -155,7 +150,7 @@ app.get('/auth/steam', (req, res, next) => {
           res.cookie('FBI', existingUser._id, {
             maxAge: 3600000,
             secure: true,  // HTTPS only
-            sameSite: 'none'
+            sameSite: 'None'
           });
     
           res.redirect(`${front_url}/`);
