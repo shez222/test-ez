@@ -34,6 +34,7 @@ app.use(
   })
 );
 
+
 // Socket.io setup
 const http = require('http').Server(app);
 const io = require('./socket').init(http, {
@@ -145,7 +146,10 @@ app.get('/auth/steam', (req, res, next) => {
             await existingUser.save();
             console.log(`User already exists: ${username}`);
           }
-    
+            res.setHeader('Access-Control-Allow-Origin', front_url);
+            res.setHeader('Access-Control-Allow-Credentials', 'true'); // Allow sending cookies
+            res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
           // Set JWT token as a cookie
           res.cookie('FBI', existingUser._id, {
             maxAge: 3600000
