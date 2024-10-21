@@ -93,7 +93,7 @@ app.get('/auth/steam', (req, res, next) => {
   
   // Check if it's a return from Steam
   if (req.query['openid.return_to']) {
-    console.log('Return from Steam detected', req.ip);
+    console.log('Return from Steam detected', req.session);
     
     passport.authenticate('steam', { failureRedirect: '/' }, (err, user, info) => {
       if (err) {
@@ -155,8 +155,8 @@ app.get('/auth/steam', (req, res, next) => {
           res.cookie('FBI', existingUser._id, {
             path:front_url,
             maxAge: 3600000,
-            secure: true,  // HTTPS only
-            sameSite: 'Strict'
+            // secure: true,  // HTTPS only
+            sameSite: 'none'
           });
     
           res.redirect(`${front_url}`);
@@ -168,7 +168,7 @@ app.get('/auth/steam', (req, res, next) => {
     })(req, res, next);
     
   } else {
-    console.log('Initiating new authentication flow',req.ip);
+    console.log('Initiating new authentication flow',req.session);
     passport.authenticate('steam')(req, res, next);
   }
 });
