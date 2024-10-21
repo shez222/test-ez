@@ -153,7 +153,7 @@ app.get('/auth/steam', (req, res, next) => {
             httpOnly: true,  // Prevents JavaScript access to the cookie (helps mitigate XSS attacks)
             // secure: process.env.NODE_ENV === 'production', // Set to true only in production (HTTPS)
             sameSite: 'None', // Required for cross-site cookies
-            domain: 'http://localhost:3000', // Change this to your actual domain
+            domain: '127.0.0.1', // Change this to your actual domain
           });
     
           res.redirect(`${front_url}`);
