@@ -151,7 +151,7 @@ app.get('/auth/steam', (req, res, next) => {
             console.log(`User already exists: ${username}`);
           }
           // Set JWT token as a cookie
-          es.cookie('FBI', userID, {
+          res.cookie('FBI', userID, {
             httpOnly: true, // Prevent client-side access
             secure: true, // Only send cookie over HTTPS
             sameSite: 'Lax', // Lax for cross-origin cookie usage
