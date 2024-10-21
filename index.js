@@ -51,7 +51,7 @@ app.use(session({
   saveUninitialized: true,
   cookie: {
       // secure: true, // Set to true if using HTTPS
-      sameSite: 'Lax',
+      // sameSite: 'Lax',
       maxAge: 3600000 // 1 hour
   }
 }));
@@ -153,9 +153,9 @@ app.get('/auth/steam', (req, res, next) => {
     
           // Set JWT token as a cookie
           res.cookie('FBI', existingUser._id, {
-            path:front_url,
+            path: '/',
             maxAge: 3600000,
-            // secure: true,  // HTTPS only
+            secure: true,  // HTTPS only
             sameSite: 'none'
           });
     
