@@ -23,6 +23,7 @@ const back_url = process.env.BACKEND_URL
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
