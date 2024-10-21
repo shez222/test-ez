@@ -71,7 +71,7 @@ passport.use(
     {
       returnURL: `${back_url}/auth/steam`,
       // returnURL: '`${front_url}`',
-      realm: `${back_url}/`,
+      realm: `${back_url}`,
       apiKey: process.env.STEAM_API_KEY,
     },
     (identifier, profile, done) => {
