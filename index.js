@@ -125,6 +125,7 @@ app.post('/auth/exchange', (req, res) => {
 // Protected route (example)
 app.get('/api/user', async (req, res) => {
   const token = req.cookies.FBI; // Read the token from the cookie
+console.log(token);
 
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
