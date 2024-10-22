@@ -117,21 +117,32 @@ app.post('/auth/exchange', (req, res) => {
 });
 
 // Protected route (example)
-app.get('/api/user', (req, res) => {
+app.get('/api/user', async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
+  console.log(token);
 
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
-  jwt.verify(token, "somececret", (err, decoded) => {
-    if (err) return res.status(403).json({ message: 'Failed to authenticate token' });
+  try {
+    // Verify the token
+    const decoded = await jwt.verify(token, "somececret");
 
     // Find the user based on decoded token data
-    User.findOne({ steamId: decoded.id }, (err, user) => {
-      if (err || !user) return res.status(404).json({ message: 'User not found' });
-      res.json({ steamID64: user.steamId, username: user.username, avatar: user.avatar });
-    });
-  });
+    const user = await User.findOne({ steamId: decoded.id });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Respond with user data
+    res.json({ steamID64: user.steamId, username: user.username, avatar: user.avatar });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(403).json({ message: 'Failed to authenticate token' });
+    }
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
+
+
 
 // Start server
 mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
