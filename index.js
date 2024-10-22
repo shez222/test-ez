@@ -16,25 +16,29 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// CORS settings
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // Ensure the origin matches your frontend
+    origin: process.env.FRONTEND_URL, // Ensure this matches your frontend domain
     methods: ['GET', 'POST'],
-    credentials: true, // Allow credentials (cookies) to be sent
+    credentials: true, // Allow credentials to be included
   })
 );
 
 // Session middleware (only needed for Passport to work)
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-session-secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-    sameSite: 'Lax', // Use 'None' if you need to allow cross-origin cookies
-  },
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your-session-secret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Set to true in production
+      sameSite: 'None', // Use 'None' for cross-domain cookies
+    },
+  })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -86,7 +90,7 @@ app.get(
     // Generate a temporary authorization code
     const authCode = Math.random().toString(36).substring(7);
 
-    // Store auth code in memory temporarily (e.g., Redis, etc. in production)
+    // Store auth code in memory temporarily
     global.authCodes = global.authCodes || {};
     global.authCodes[authCode] = req.user;
 
@@ -99,33 +103,37 @@ app.get(
 app.post('/auth/exchange', (req, res) => {
   const { code } = req.body;
 
+  console.log('Received auth code:', code); // Log received auth code
+
   if (global.authCodes && global.authCodes[code]) {
     const user = global.authCodes[code];
 
     // Generate JWT
     const token = generateToken(user);
+    console.log('Generated JWT:', token); // Log the generated JWT
 
-    // Optionally, set the token in a cookie
+    // Set the token in a cookie
     res.cookie('FBI', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-      sameSite: 'Lax', // Change to 'None' if needed
+      sameSite: 'None', // Adjust for cross-domain
     });
 
     // Clear the auth code
     delete global.authCodes[code];
 
+    console.log('Cookie set with token.'); // Log cookie setting action
     res.json({ token });
   } else {
+    console.log('Invalid or expired authorization code'); // Log error message
     res.status(400).json({ message: 'Invalid or expired authorization code' });
   }
 });
 
 // Protected route (example)
 app.get('/api/user', async (req, res) => {
-  console.log('Cookies: ', req.cookies); // Log all cookies for debugging
   const token = req.cookies.FBI; // Read the token from the cookie
-  console.log('Token: ', token); // Log the token
+  console.log('Token:', token);
 
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
@@ -149,7 +157,7 @@ app.get('/api/user', async (req, res) => {
 });
 
 // Start server
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://your-mongo-uri')
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
