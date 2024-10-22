@@ -23,8 +23,8 @@ const back_url = process.env.BACKEND_URL
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
 // Middleware
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -34,7 +34,6 @@ app.use(
     credentials: true,
   })
 );
-
 
 // Socket.io setup
 const http = require('http').Server(app);
@@ -48,261 +47,225 @@ const io = require('./socket').init(http, {
 
 
 app.use(session({
-  secret: 'your-session-secret', // Use a secure, random string
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: true,
+  cookie: {
+    httpOnly: true, // Prevent client-side access to the cookie
+    secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
+    sameSite: 'Lax',
+  },
 }));
-
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Configure Passport with Steam Strategy
 passport.serializeUser((user, done) => {
-  done(null, user);
+  done(null, user.id); // Store only the user ID in the session
 });
 
-passport.deserializeUser((obj, done) => {
-  done(null, obj);
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id); // Fetch user details from the database
+    done(null, user); // Assign the retrieved user to req.user
+  } catch (err) {
+    done(err);
+  }
 });
 
 passport.use(
   new SteamStrategy(
     {
-      returnURL: `${back_url}/auth/steam`,
-      // returnURL: '`${front_url}`',
-      realm: `${back_url}/`,
+      returnURL: `${process.env.BACKEND_URL}/auth/steam`,
+      realm: `${process.env.BACKEND_URL}/`,
       apiKey: process.env.STEAM_API_KEY,
     },
-    (identifier, profile, done) => {
-      process.nextTick(() => {
-        profile.identifier = identifier;
-        return done(null, profile);
-      });
+    async (identifier, profile, done) => {
+      console.log('Steam Identifier:', identifier);
+      console.log('Steam Profile:', profile); // Check profile details
+      const steamID64 = profile.id;
+      const username = profile.displayName;
+      const avatar = profile.avatar
+
+      // Check if user already exists
+      let existingUser = await User.findOne({ steamId: steamID64 });
+      if (!existingUser) {
+        const newUser = new User({ steamId: steamID64, username: username, avatar: avatar });
+        await newUser.save();
+        console.log('New User Created:', newUser); // Log new user
+        return done(null, newUser);
+      }
+      console.log('Existing User Found:', existingUser); // Log existing user
+      return done(null, existingUser);
     }
   )
 );
 
-
 // Steam Authentication Route
-app.get('/auth/steam', (req, res, next) => {
-  console.log('Initiating Steam authentication...');
+app.get('/auth/steam', passport.authenticate('steam', { failureRedirect: '/' }), (req, res) => {
+  // console.log('User after authentication:', req.user); // Log user after authentication
+  res.redirect(`${process.env.FRONTEND_URL}`);
+});
+
+// Logout Route
+app.post('/auth/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ message: 'Logout error' });
+    }
+    res.clearCookie('FBI'); // Clear cookie
+    res.json({ message: 'Logged out successfully' });
+  });
+});
+
+// User Info Route
+app.get('/api/user', (req, res) => {
+  console.log(req.user);
   
-  // Check if it's a return from Steam
-  if (req.query['openid.return_to']) {
-    console.log('Return from Steam detected', req.session);
-    
-    passport.authenticate('steam', { failureRedirect: '/' }, (err, user, info) => {
-      if (err) {
-        console.error('Authentication Error:', err);
-        return res.status(500).json({ message: 'Authentication Error' }); // Return error response
-      }
-      
-      if (!user) {
-        console.error('User not found:', info);
-        return res.status(401).json({ message: 'User not found' }); // Return not found response
-      }
-    
-      req.logIn(user, async (err) => {
-        if (err) {
-          console.error('Login Error:', err);
-          return res.status(500).json({ message: 'Login Error' }); // Return error response
-        }
-        
-        console.log('Authenticated user:', req.user);
-        
-        // Return user data as JSON
-        const user = req.user;
-        const steamID64 = user.id;
-        const username = user.displayName;
-        const avatar = {
-          small: user.photos[0].value,
-          medium: user.photos[1].value,
-          large: user.photos[2].value,
-        };
-        let userID;
-    
-    
-        // Create JWT token
-        const token = jwt.sign(
-          { steamID64, username, avatar },
-          "somesecret",
-          { expiresIn: '1h' }
-        );
-    
-        try {
-          // Check if user already exists
-          let existingUser = await User.findOne({ steamId: steamID64 });
-    
-          if (!existingUser) {
-            const newUser = new User({
-              steamId: steamID64,
-              username: username,
-              avatar: avatar,
-              token: token,
-            });
-            await newUser.save();
-            userID = newUser._id
-            console.log(`New user created: ${username}`);
-          } else {
-            existingUser.token = token;
-            await existingUser.save();
-            userID = existingUser._id
-            console.log(`User already exists: ${username}`);
-          }
-          // Set JWT token as a cookie
-          res.cookie('FBI', userID, {
-            httpOnly: true, // Prevent client-side access
-            secure: true, // Only send cookie over HTTPS
-            sameSite: 'Lax', // Lax for cross-origin cookie usage
-            maxAge: 3600000, // 1 hour
-          });
-
-          res.redirect(`${front_url}`);
-        } catch (error) {
-          console.error('Error saving user:', error);
-          res.redirect('/');
-        }
-      });
-    })(req, res, next);
-    
-  } else {
-    console.log('Initiating new authentication flow',req.session);
-    passport.authenticate('steam')(req, res, next);
+  if (req.isAuthenticated() && req.user) {
+    return res.json({
+      steamID64: req.user.steamId,
+      username: req.user.username,
+      avatar: req.user.photos, // This might need adjustment if photos are not stored
+    });
   }
+  return res.status(401).json({ message: 'Unauthorized' });
 });
 
 
 
-
-// Return after Steam authentication handled in the same route
-// app.get(
-//   '/auth/steam',
-//   passport.authenticate('steam', { failureRedirect: '/' }),
-//   async (req, res) => {
-//     const user = req.user;
-//     const steamID64 = user.id;
-//     const username = user.displayName;
-//     const avatar = {
-//       small: user.photos[0].value,
-//       medium: user.photos[1].value,
-//       large: user.photos[2].value,
-//     };
-
-//     // Retrieve client IP from session
-//     const clientIp = req.session.clientIp;
-//     console.log('Client IP from session after Steam authentication:', clientIp);
-
-//     // Create JWT token
-//     const token = jwt.sign(
-//       { steamID64, username, avatar },
-//       "somesecret",
-//       { expiresIn: '1h' }
-//     );
-
-//     try {
-//       // Check if user already exists
-//       let existingUser = await User.findOne({ steamId: steamID64 });
-
-//       if (!existingUser) {
-//         const newUser = new User({
-//           steamId: steamID64,
-//           username: username,
-//           avatar: avatar,
-//           token: token,
-//           lastLoginIp: clientIp, // Store the IP in the user document
-//         });
-//         await newUser.save();
-//         console.log(`New user created: ${username}`);
-//       } else {
-//         existingUser.token = token;
-//         existingUser.lastLoginIp = clientIp;
-//         await existingUser.save();
-//         console.log(`User already exists: ${username}`);
-//       }
-
-//       // Set JWT token as a cookie
-//       res.cookie('FBI', existingUser._id, {
-//         maxAge: 3600000,
-//         secure: true,  // HTTPS only
-//         sameSite: 'Strict'
-//       });
-
-//       res.redirect(`${front_url}`);
-//     } catch (error) {
-//       console.error('Error saving user:', error);
-//       res.redirect('/');
-//     }
+// app.use(session({
+//   secret: 'your-session-secret', // Use a secure, random string
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//       // secure: true, // Set to true if using HTTPS
+//       sameSite: 'Lax',
+//       maxAge: 3600000 // 1 hour
 //   }
+// }));
+
+
+// app.use(passport.initialize());
+// app.use(passport.session());
+
+// // Configure Passport with Steam Strategy
+// passport.serializeUser((user, done) => {
+//   done(null, user);
+// });
+
+// passport.deserializeUser((obj, done) => {
+//   done(null, obj);
+// });
+
+// passport.use(
+//   new SteamStrategy(
+//     {
+//       returnURL: `${back_url}/auth/steam`,
+//       // returnURL: '`${front_url}`',
+//       realm: `${back_url}/`,
+//       apiKey: process.env.STEAM_API_KEY,
+//     },
+//     (identifier, profile, done) => {
+//       process.nextTick(() => {
+//         profile.identifier = identifier;
+//         console.log(profile);
+        
+//         return done(null, profile);
+//       });
+//     }
+//   )
 // );
 
 
-// app.get(
-//   '/auth/steam/return',
-//   passport.authenticate('steam', { failureRedirect: '/' }),
-//   async (req, res) => {
-//     const user = req.user;
-//     const steamID64 = user.id;
-//     const username = user.displayName;
-//     const profile = user.profileUrl;
-//     const avatar = {
-//       small: user.photos[0].value,
-//       medium: user.photos[1].value,
-//       large: user.photos[2].value,
-//     };
-
-//     try {
-//       // Check if user already exists
-//       let existingUser = await User.findOne({ steamId: steamID64 });
-
-//       if (!existingUser) {
-//         // If the user doesn't exist, create a new user
-//         const newUser = new User({
-//           steamId: steamID64,
-//           username: username,
-//           profileUrl: profile,
-//           avatar: avatar,
-//         });
-//         await newUser.save();
-//         console.log(`New user created: ${username}`);
-//       } else {
-//         console.log(`User already exists: ${username}`);
+// // Steam Authentication Route
+// app.get('/auth/steam', (req, res, next) => {
+//   console.log('Initiating Steam authentication...');
+  
+//   // Check if it's a return from Steam
+//   if (req.query['openid.return_to']) {
+//     console.log('Return from Steam detected', req.ip);
+    
+//     passport.authenticate('steam', { failureRedirect: '/' }, (err, user, info) => {
+//       if (err) {
+//         console.error('Authentication Error:', err);
+//         return res.status(500).json({ message: 'Authentication Error' }); // Return error response
 //       }
-//       console.log(res);
       
-
-//       // Create JWT token
-//       const token = jwt.sign(
-//         { steamID64, username, avatar }, // Data to encode in JWT
-//         "somesecret",          // Secret key to sign the token
-//         { expiresIn: '1h' }              // Token expiration
-//       );
-
-//       // Set JWT token as HTTP-only cookie (ensure `secure: true` is used in production with HTTPS)
-//       res.cookie('token', token, {
-//         httpOnly: true,
-//         maxAge: 3600000, // 1 hour
-//         secure: true,     // Only sent over HTTPS
-//         sameSite: 'Strict'
+//       if (!user) {
+//         console.error('User not found:', info);
+//         return res.status(401).json({ message: 'User not found' }); // Return not found response
+//       }
+    
+//       req.logIn(user, async (err) => {
+//         if (err) {
+//           console.error('Login Error:', err);
+//           return res.status(500).json({ message: 'Login Error' }); // Return error response
+//         }
+        
+//         console.log('Authenticated user:', req.user);
+        
+//         // Return user data as JSON
+//         const user = req.user;
+//         const steamID64 = user.id;
+//         const username = user.displayName;
+//         const avatar = {
+//           small: user.photos[0].value,
+//           medium: user.photos[1].value,
+//           large: user.photos[2].value,
+//         };
+//         let userID;
+    
+    
+//         // Create JWT token
+//         const token = jwt.sign(
+//           { steamID64, username, avatar },
+//           "somesecret",
+//           { expiresIn: '1h' }
+//         );
+        
+//         try {
+//           // Check if user already exists
+//           let existingUser = await User.findOne({ steamId: steamID64 });
+    
+//           if (!existingUser) {
+//             const newUser = new User({
+//               steamId: steamID64,
+//               username: username,
+//               avatar: avatar,
+//               token: token,
+//             });
+//             await newUser.save();
+//             userID = newUser._id
+//             console.log(`New user created: ${username}`);
+//           } else {
+//             existingUser.token = token;
+//             await existingUser.save();
+//             userID = existingUser._id
+//             console.log(`User already exists: ${username}`);
+//           }
+    
+//           // Set JWT token as a cookie
+//           res.cookie('FBI', userID, {
+//             maxAge: 3600000,
+//             secure: true,  // HTTPS only
+//             sameSite: 'Strict'
+//           });
+    
+//           res.redirect(`${front_url}`);
+//         } catch (error) {
+//           console.error('Error saving user:', error);
+//           res.redirect('/');
+//         }
 //       });
-
-//       // Redirect to frontend after setting the cookie (without exposing sensitive data in the URL)
-//       res.redirect(`${front_url}`);
-//     } catch (error) {
-//       console.error('Error saving user:', error);
-//       res.redirect('/');
-//     }
+//     })(req, res, next);
+    
+//   } else {
+//     console.log('Initiating new authentication flow',req.ip);
+//     passport.authenticate('steam')(req, res, next);
 //   }
-// );
-
-app.get('/api/user', isAuth,(req, res) => {
-  try {
-    const user = req.user
-    res.json({ username: user.username, steamID64: user.steamID64, avatar: user.avatar });
-  } catch (error) {
-    return res.status(403).json({ message: 'Invalid token' });
-  }
-});
+// });
 
 
 
@@ -414,10 +377,10 @@ app.get('/trade-url', (req, res) => {
 });
 
 // Logout route
-app.post('/auth/logout', (req, res) => {
-  res.clearCookie('token'); // Clear the token cookie
-  res.json({ message: 'Logged out' });
-});
+// app.post('/auth/logout', (req, res) => {
+//   res.clearCookie('token'); // Clear the token cookie
+//   res.json({ message: 'Logged out' });
+// });
 
 // Connect to MongoDB and start the server
 mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
