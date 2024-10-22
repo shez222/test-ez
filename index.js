@@ -41,7 +41,7 @@ app.use(passport.session());
 
 // JWT utility function
 const generateToken = (user) => {
-  return jwt.sign({ id: user.steamId, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  return jwt.sign({ id: user.steamId, username: user.username },"somececret", { expiresIn: '1h' });
 };
 
 // Passport Steam Strategy
