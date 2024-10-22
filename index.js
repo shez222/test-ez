@@ -20,7 +20,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL, // Ensure the origin matches your frontend
     methods: ['GET', 'POST'],
-    credentials: true,
+    credentials: true, // Allow credentials (cookies) to be sent
   })
 );
 
@@ -31,8 +31,8 @@ app.use(session({
   saveUninitialized: true,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax',
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    sameSite: 'Lax', // Use 'None' if you need to allow cross-origin cookies
   },
 }));
 
@@ -41,7 +41,7 @@ app.use(passport.session());
 
 // JWT utility function
 const generateToken = (user) => {
-  return jwt.sign({ id: user.steamId, username: user.username },"somececret", { expiresIn: '1h' });
+  return jwt.sign({ id: user.steamId, username: user.username }, "somececret", { expiresIn: '1h' });
 };
 
 // Passport Steam Strategy
@@ -85,9 +85,8 @@ app.get(
   (req, res) => {
     // Generate a temporary authorization code
     const authCode = Math.random().toString(36).substring(7);
-    
+
     // Store auth code in memory temporarily (e.g., Redis, etc. in production)
-    // Here we'll use an in-memory object as an example:
     global.authCodes = global.authCodes || {};
     global.authCodes[authCode] = req.user;
 
@@ -106,6 +105,13 @@ app.post('/auth/exchange', (req, res) => {
     // Generate JWT
     const token = generateToken(user);
 
+    // Optionally, set the token in a cookie
+    res.cookie('FBI', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+      sameSite: 'Lax', // Change to 'None' if needed
+    });
+
     // Clear the auth code
     delete global.authCodes[code];
 
@@ -116,10 +122,10 @@ app.post('/auth/exchange', (req, res) => {
 });
 
 // Protected route (example)
-// Protected route (example)
 app.get('/api/user', async (req, res) => {
+  console.log('Cookies: ', req.cookies); // Log all cookies for debugging
   const token = req.cookies.FBI; // Read the token from the cookie
-console.log(token);
+  console.log('Token: ', token); // Log the token
 
   if (!token) return res.status(401).json({ message: 'No token provided' });
 
@@ -142,16 +148,12 @@ console.log(token);
   }
 });
 
-
-
-
 // Start server
 mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
-
   })
   .catch(err => console.error('Database connection error:', err));
 
