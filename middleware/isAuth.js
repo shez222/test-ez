@@ -1,27 +1,31 @@
 // src/middleware/isAuth.js
 const jwt = require('jsonwebtoken');
-const User = require('../models/userSchema')
+// const User = require('../models/userSchema')
 
 const isAuth = async (req, res, next) => {
-  const user = req.cookies.FBI; // Assuming you're storing the token in cookies
+  const token = req.headers['authorization']?.split(' ')[1];
+  // console.log(token);
+  console.log("rea");
   
-  let existingUser = await User.findOne({ _id: user });
-  
-  if (!existingUser) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  const token = existingUser.token;
+  if (!token) return res.status(401).json({ message: 'No token provided' });
 
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-  jwt.verify(token, "somesecret", (err, decoded) => {
+  jwt.verify(token, "somececret", (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      console.log("rea2");
+      return res.status(403).json({ message: 'Failed to authenticate token' });
     }
-    req.user = decoded; // Attach user information to request object
-    next();
+    
+    // Check if the client IP matches the one in the token
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (decoded.ip !== clientIp) {
+      return res.status(403).json({ message: 'Token IP mismatch' });
+    }
+
+    // If everything is fine, store the decoded information for further use
+    req.user = decoded; // Attach user info to the request object
+    // console.log(req.user);
+    
+    next(); // Call the next middleware/route handler
   });
 };
 
