@@ -16,36 +16,60 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-
-// CORS settings
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // Ensure this matches your frontend domain
+    origin: process.env.FRONTEND_URL, // Ensure the origin matches your frontend
     methods: ['GET', 'POST'],
-    credentials: true, // Allow credentials to be included
+    credentials: true,
   })
 );
 
 // Session middleware (only needed for Passport to work)
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'your-session-secret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Set to true in production
-      sameSite: 'None', // Use 'None' for cross-domain cookies
-    },
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax',
+  },
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 // JWT utility function
-const generateToken = (user) => {
-  return jwt.sign({ id: user.steamId, username: user.username }, "somececret", { expiresIn: '1h' });
+const generateToken = (user, ip) => {
+  return jwt.sign(
+    { id: user.steamId, username: user.username, ip }, // Include client IP in the payload
+    "somececret",
+    { expiresIn: '1h' }
+  );
+};
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  console.log(token);
+
+  if (!token) return res.status(401).json({ message: 'No token provided' });
+
+  jwt.verify(token, "somececret", (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Failed to authenticate token' });
+    }
+
+    // Check if the client IP matches the one in the token
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (decoded.ip !== clientIp) {
+      return res.status(403).json({ message: 'Token IP mismatch' });
+    }
+
+    // If everything is fine, store the decoded information for further use
+    req.user = decoded; // Attach user info to the request object
+    next(); // Call the next middleware/route handler
+  });
 };
 
 // Passport Steam Strategy
@@ -89,8 +113,8 @@ app.get(
   (req, res) => {
     // Generate a temporary authorization code
     const authCode = Math.random().toString(36).substring(7);
-
-    // Store auth code in memory temporarily
+    
+    // Store auth code in memory temporarily (e.g., Redis, etc. in production)
     global.authCodes = global.authCodes || {};
     global.authCodes[authCode] = req.user;
 
@@ -103,61 +127,37 @@ app.get(
 app.post('/auth/exchange', (req, res) => {
   const { code } = req.body;
 
-  console.log('Received auth code:', code); // Log received auth code
-
   if (global.authCodes && global.authCodes[code]) {
     const user = global.authCodes[code];
 
-    // Generate JWT
-    const token = generateToken(user);
-    console.log('Generated JWT:', token); // Log the generated JWT
+    // Get client IP address
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-    // Set the token in a cookie
-    res.cookie('FBI', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-      sameSite: 'None', // Adjust for cross-domain
-    });
+    // Generate JWT with user data and client IP
+    const token = generateToken(user, clientIp);
 
     // Clear the auth code
     delete global.authCodes[code];
 
-    console.log('Cookie set with token.'); // Log cookie setting action
     res.json({ token });
   } else {
-    console.log('Invalid or expired authorization code'); // Log error message
     res.status(400).json({ message: 'Invalid or expired authorization code' });
   }
 });
 
 // Protected route (example)
-app.get('/api/user', async (req, res) => {
-  const token = req.cookies.FBI; // Read the token from the cookie
-  console.log('Token:', token);
+app.get('/api/user', authenticateToken, async (req, res) => {
+  // req.user is available here
+  const user = await User.findOne({ steamId: req.user.id });
 
-  if (!token) return res.status(401).json({ message: 'No token provided' });
+  if (!user) return res.status(404).json({ message: 'User not found' });
 
-  try {
-    // Verify the token
-    const decoded = await jwt.verify(token, "somececret");
-
-    // Find the user based on decoded token data
-    const user = await User.findOne({ steamId: decoded.id });
-
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // Respond with user data
-    res.json({ steamID64: user.steamId, username: user.username, avatar: user.avatar });
-  } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(403).json({ message: 'Failed to authenticate token' });
-    }
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
+  // Respond with user data
+  res.json({ steamID64: user.steamId, username: user.username, avatar: user.avatar });
 });
 
 // Start server
-mongoose.connect('mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
