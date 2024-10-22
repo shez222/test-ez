@@ -53,7 +53,7 @@ app.use(session({
   cookie: {
     httpOnly: true, // Prevent client-side access to the cookie
     secure: process.env.NODE_ENV === 'production', // Only use HTTPS in production
-    sameSite: 'Lax',
+    sameSite: 'None',
   },
 }));
 
