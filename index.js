@@ -242,9 +242,9 @@ app.get('/api/inventory', isAuth, async (req, res) => {
 app.use('/jackpotSystem', jackpotRoutes);
 
 // Route to redirect user to Steam Trade Offer URL page
-app.get('/trade-url', (req, res) => {
+app.get('/trade-url', isAuth,(req, res) => {
   try {
-    const steamID64 = req.user?.id;
+    const steamID64 = req.user.id;
     if (!steamID64) {
       return res.status(401).json({ error: 'Unauthorized: No Steam ID found.' });
     }
