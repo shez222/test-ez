@@ -109,12 +109,6 @@ app.post('/auth/exchange', (req, res) => {
     // Clear the auth code
     delete global.authCodes[code];
 
-    // Send JWT back to the frontend
-    res.cookie('FBI', token, {
-      maxAge: 3600000,
-      secure: true,  // HTTPS only
-      sameSite: 'Strict'
-    });
     res.json({ token });
   } else {
     res.status(400).json({ message: 'Invalid or expired authorization code' });
