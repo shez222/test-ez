@@ -157,7 +157,7 @@ app.get('/api/user', async (req, res) => {
 });
 
 // Start server
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://your-mongo-uri')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
