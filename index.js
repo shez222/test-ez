@@ -134,9 +134,85 @@ app.get('/api/user', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://bilalshehroz420:00000@cluster0.wru7job.mongodb.net/ez_skin?retryWrites=true&w=majority')
+  .then(() => {
+    http.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+
+    // Existing Socket.IO connection handler
+    io.on('connection', socket => {
+      console.log('Client connected', socket.id);
+      // Existing event handlers (if any)
+    });
+
+    // Chat namespace for chat functionality
+    const chatNamespace = io.of('/chat');
+
+    chatNamespace.on('connection', async (socket) => {
+      console.log('Client connected to chat namespace', socket.id);
+
+      try {
+        // Fetch the last 20 messages from the database, sorted by timestamp ascending
+        const lastMessages = await Message.find()
+          .sort({ timestamp: -1 })
+          .limit(20)
+          .sort({ timestamp: 1 }); // To send them in chronological order
+
+        // Send the initial messages to the newly connected client
+        socket.emit('initialMessages', lastMessages);
+      } catch (err) {
+        console.error('Error fetching initial messages:', err);
+      }
+
+      // Listen for incoming chat messages
+      socket.on('chatMessage', async (msg) => {
+        // Add a timestamp if not provided
+        msg.timestamp = msg.timestamp || new Date();
+
+        // Save the message to the database
+        const message = new Message({
+          username: msg.username,
+          text: msg.text,
+          avatar: msg.avatar,
+          timestamp: msg.timestamp,
+        });
+
+        try {
+          await message.save();
+
+          // After saving, check if there are more than 20 messages
+          const messageCount = await Message.countDocuments();
+          if (messageCount > 20) {
+            // Fetch the messages to delete
+            const messagesToDelete = await Message.find()
+              .sort({ timestamp: 1 }) // Oldest first
+              .limit(messageCount - 20);
+
+            // Extract the IDs of messages to delete
+            const idsToDelete = messagesToDelete.map(msg => msg._id);
+
+            // Delete all messages with the extracted IDs
+            await Message.deleteMany({ _id: { $in: idsToDelete } });
+          }
+
+        } catch (err) {
+          console.error('Error saving message:', err);
+          return;
+        }
+
+        // Broadcast the message to all connected clients in the chat namespace
+        chatNamespace.emit('chatMessage', msg);
+      });
+
+      // Handle disconnect event
+      socket.on('disconnect', () => {
+        console.log('Client disconnected from chat namespace', socket.id);
+      });
+    });
+
+  })
+  .catch(err => console.error('Database connection error:', err));
 
 
 
