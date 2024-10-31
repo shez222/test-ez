@@ -35,7 +35,7 @@ const sendTradeOfferToUser = async (tradeUrl, items) => {
     tradeOffer.send((err, status) => {
       console.log(err)
       if (err) {
-        ;
+      
         
         console.error('Failed to send trade offer:', err);
         return reject(err);
@@ -239,7 +239,7 @@ const getJackpotHistory = async (req, res) => {
     console.log("reached");
     
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    console.log(twentyFourHoursAgo);
+    // console.log(twentyFourHoursAgo);
     
     // Fetch all jackpots with status 'completed' and created within the last 24 hours
     const jackpots = await Jackpot.find({
@@ -258,7 +258,7 @@ const getJackpotHistory = async (req, res) => {
         path: 'winner', // Populate the 'winner' field
         select: 'username avatar', // Select specific fields (optional)
       });
-      console.log("jack", jackpots);
+      // console.log("jack", jackpots);
     // Check if any jackpots are found
     if (!jackpots || jackpots.length === 0) {
       return res.status(404).json({ error: 'No completed jackpots found in the last 24 hours' });
@@ -282,8 +282,9 @@ const getJackpotHistory = async (req, res) => {
 const saveTradeUrl = async (req, res) => {
   try {
     const { tradeUrl } = req.body;
-    const steamID64 = req.user.steamID64
+    const steamID64 = req.user.id
     
+    console.log(tradeUrl,steamID64);
     
     // Validate userId and tradeUrl
     if (!steamID64 || !tradeUrl) {
@@ -307,11 +308,109 @@ const saveTradeUrl = async (req, res) => {
   }
 };
 
+
+// const getUserStatistics = (req, res) => {
+//   // Sample dummy data to simulate database response
+//   const userStatistics = {
+//     deposited: 1500.50,
+//     totalWon: 3200.75,
+//     profit: 1700.25,
+//     recentWinnings: [
+//       {
+//         winner: "User123",
+//         amount: "$500.00",
+//         chance: "25%",
+//         gamemode: "Classic",
+//         winningTrade: "Trade ID 456"
+//       },
+//       {
+//         winner: "User456",
+//         amount: "$300.00",
+//         chance: "15%",
+//         gamemode: "Speed",
+//         winningTrade: "Trade ID 789"
+//       },
+//       {
+//         winner: "User789",
+//         amount: "$200.00",
+//         chance: "10%",
+//         gamemode: "Lucky Draw",
+//         winningTrade: "Trade ID 123"
+//       },
+//       {
+//         winner: "User101",
+//         amount: "$150.00",
+//         chance: "12%",
+//         gamemode: "Challenge",
+//         winningTrade: "Trade ID 987"
+//       },
+//       {
+//         winner: "User202",
+//         amount: "$100.00",
+//         chance: "5%",
+//         gamemode: "Event",
+//         winningTrade: "Trade ID 654"
+//       }
+//     ]
+//   };
+
+//   // Send the response back to the client
+//   res.status(200).json(userStatistics);
+// };
+
+const getUserStatistics = async (req, res) => {
+  try {
+    const userId = req.user.id; // Ensure this is the correct identifier (steamId or _id)
+
+    // Fetch the user with populated game history
+    const user = await User.findOne({ steamId: userId }).populate({
+      path: 'gameHistory.jackpotId',
+      select: 'createdAt', // Select fields you need from Jackpot
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (!Array.isArray(user.gameHistory)) {
+      console.error('User gameHistory is not an array:', user.gameHistory);
+      return res.status(500).json({ error: 'User game history is invalid.' });
+    }
+
+    // Prepare the response data
+    const stats = {
+      deposited: user.deposited,
+      totalWon: user.totalWon,
+      profit: user.profit,
+      recentWinnings: user.gameHistory
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // Sort by latest first
+        .slice(0, 5) // Get the last 5 entries
+        .map(entry => ({
+          winner: entry.isWinner ? user.username : "N/A", // Show username if winner, else "N/A" or another indicator
+          amount: `$${entry.totalWon.toFixed(2)}`,
+          chance: entry.chance,
+          gamemode: entry.gamemode,
+          winningTrade: entry.isWinner ? entry.winningTrade : "N/A", // Show trade ID/URL if winner
+        })),
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Error fetching user statistics:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
+
 module.exports = {
   joinJackpot,
   getJackpotStatus,
   getJackpotHistory,
-  saveTradeUrl
+  saveTradeUrl,
+  getUserStatistics
 };
 
 
