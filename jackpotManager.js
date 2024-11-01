@@ -281,9 +281,9 @@ async function endRound() {
     }
 
     // Distribute items between winner (90%) and admin/bot (10%)
-    // const totalItems = winnerParticipant.participant.items;
-    // const itemSplitIndex = Math.floor(totalItems.length * 0.9); // Keep 10% for bot/admin
-    // const winnerItems = totalItems.slice(0, itemSplitIndex);
+    const totalItems = winnerParticipant.participant.items;
+    const itemSplitIndex = Math.floor(totalItems.length * 0.9); // Keep 10% for bot/admin
+    const winnerItems = totalItems.slice(0, itemSplitIndex);
     // const adminItems = totalItems.slice(itemSplitIndex);
 
     // Transfer 90% of items to winner, and keep 10% for the bot
