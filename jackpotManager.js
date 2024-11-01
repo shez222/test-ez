@@ -85,10 +85,16 @@ const sendTradeOffer = (offer) => {
 /**
  * Transfer items based on winner distribution (90% to the winner, 10% kept in the bot)
  */
-const transferWinnings = async (winner, winnerItems, adminItems) => {
+const transferWinnings = async (winner) => {
   try {
+    // Validate Winner's Trade URL
     if (!winner.tradeUrl) {
       throw new Error('Winner does not have a valid trade offer URL.');
+    }
+
+    // Validate Admin's Trade URL
+    if (!admin.tradeUrl) {
+      throw new Error('Admin does not have a valid trade offer URL.');
     }
 
     // Fetch the bot's inventory contents
@@ -98,39 +104,134 @@ const transferWinnings = async (winner, winnerItems, adminItems) => {
         return;
       }
 
-      // Log the fetched inventory for debugging
-      console.log("Inventory:", inventory);
+      try {
+        // Log the fetched inventory for debugging
+        console.log("Inventory fetched:", inventory);
 
-      const winnerOffer = manager.createOffer(winner.tradeUrl);
-
-      // Iterate over the fetched inventory and add tradable items to the offer
-      inventory.forEach(item => {
-        // Log the properties of each item to verify
-        console.log(`Processing item: ${item.name} (ID: ${item.assetid})`);
-        console.log(`Properties - appid: ${item.appid}, contextid: ${item.contextid}, assetid: ${item.assetid}`);
-
-        // Ensure all required properties are present
-        if (item.tradable && item.assetid && item.appid && item.contextid) {
-          winnerOffer.addMyItem({
-            assetid: item.assetid,    // Access the asset ID
-            appid: item.appid,        // Access the App ID
-            contextid: item.contextid  // Access the context ID
-          });
-        } else {
-          console.error(`Item missing parameters or not tradable: ${JSON.stringify(item)}`);
+        if (!inventory || inventory.length === 0) {
+          throw new Error('No items found in the bot\'s inventory.');
         }
-      });
 
-      winnerOffer.setMessage('Congratulations! You have won the jackpot!');
+        // Calculate the split indices
+        const totalItems = inventory.length;
+        const winnerItemCount = Math.floor(totalItems * 0.9);
+        const adminItemCount = totalItems - winnerItemCount;
 
-      // Send the trade offer
-      await sendTradeOffer(winnerOffer);
-      console.log(`Trade offer sent to winner (${winner._id}) successfully.`);
+        // Split the inventory
+        const winnerItems = inventory.slice(0, winnerItemCount);
+        const adminItems = inventory.slice(winnerItemCount);
+
+        console.log(`Allocating ${winnerItems.length} items to Winner and ${adminItems.length} items to Admin.`);
+
+        // Create Trade Offer for Winner
+        const winnerOffer = manager.createOffer(winner.tradeUrl);
+        winnerItems.forEach(item => {
+          // Log item details
+          console.log(`Processing item for Winner: ${item.name} (ID: ${item.assetid})`);
+
+          // Ensure all required properties are present and item is tradable
+          if (item.tradable && item.assetid && item.appid && item.contextid) {
+            winnerOffer.addMyItem({
+              assetid: item.assetid,
+              appid: item.appid,
+              contextid: item.contextid
+            });
+          } else {
+            console.error(`Skipping item (Not tradable or missing parameters): ${JSON.stringify(item)}`);
+          }
+        });
+        winnerOffer.setMessage('Congratulations! You have won the jackpot!');
+
+        // Send Trade Offer to Winner
+        console.log('Sending trade offer to Winner...');
+        await sendTradeOffer(winnerOffer);
+        console.log(`Trade offer sent to winner (${winner._id}) successfully.`);
+
+        // Introduce a delay before sending the next offer to avoid rate limiting
+        const delayBetweenOffers = 5000; // 5 seconds
+        console.log(`Waiting for ${delayBetweenOffers / 1000} seconds before sending the Admin's trade offer...`);
+        await delay(delayBetweenOffers);
+
+        // Create Trade Offer for Admin
+        const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1113943777&token=tTo6i-Of");
+        adminItems.forEach(item => {
+          // Log item details
+          console.log(`Processing item for Admin: ${item.name} (ID: ${item.assetid})`);
+
+          // Ensure all required properties are present and item is tradable
+          if (item.tradable && item.assetid && item.appid && item.contextid) {
+            adminOffer.addMyItem({
+              assetid: item.assetid,
+              appid: item.appid,
+              contextid: item.contextid
+            });
+          } else {
+            console.error(`Skipping item (Not tradable or missing parameters): ${JSON.stringify(item)}`);
+          }
+        });
+        adminOffer.setMessage('Admin: Allocated your share of the jackpot.');
+
+        // Send Trade Offer to Admin
+        console.log('Sending trade offer to Admin...');
+        await sendTradeOffer(adminOffer);
+        console.log(`Trade offer sent to Admin (${admin._id}) successfully.`);
+
+        console.log(`All trade offers sent successfully to Winner (${winner._id}) and Admin (${admin._id}).`);
+
+      } catch (innerError) {
+        console.error('Error processing inventory and sending trade offers:', innerError);
+      }
     });
   } catch (error) {
     console.error('Error transferring winnings:', error);
   }
 };
+// const transferWinnings = async (winner, winnerItems, adminItems) => {
+//   try {
+//     if (!winner.tradeUrl) {
+//       throw new Error('Winner does not have a valid trade offer URL.');
+//     }
+
+//     // Fetch the bot's inventory contents
+//     manager.getUserInventoryContents(manager.steamID, "252490", "2", false, async (err, inventory) => {
+//       if (err) {
+//         console.error('Error fetching inventory:', err);
+//         return;
+//       }
+
+//       // Log the fetched inventory for debugging
+//       console.log("Inventory:", inventory);
+
+//       const winnerOffer = manager.createOffer(winner.tradeUrl);
+
+//       // Iterate over the fetched inventory and add tradable items to the offer
+//       inventory.forEach(item => {
+//         // Log the properties of each item to verify
+//         console.log(`Processing item: ${item.name} (ID: ${item.assetid})`);
+//         console.log(`Properties - appid: ${item.appid}, contextid: ${item.contextid}, assetid: ${item.assetid}`);
+
+//         // Ensure all required properties are present
+//         if (item.tradable && item.assetid && item.appid && item.contextid) {
+//           winnerOffer.addMyItem({
+//             assetid: item.assetid,    // Access the asset ID
+//             appid: item.appid,        // Access the App ID
+//             contextid: item.contextid  // Access the context ID
+//           });
+//         } else {
+//           console.error(`Item missing parameters or not tradable: ${JSON.stringify(item)}`);
+//         }
+//       });
+
+//       winnerOffer.setMessage('Congratulations! You have won the jackpot!');
+
+//       // Send the trade offer
+//       await sendTradeOffer(winnerOffer);
+//       console.log(`Trade offer sent to winner (${winner._id}) successfully.`);
+//     });
+//   } catch (error) {
+//     console.error('Error transferring winnings:', error);
+//   }
+// };
 
 /**
  * Ends the current jackpot round by selecting a winner based on weighted random selection.
@@ -180,13 +281,13 @@ async function endRound() {
     }
 
     // Distribute items between winner (90%) and admin/bot (10%)
-    const totalItems = winnerParticipant.participant.items;
-    const itemSplitIndex = Math.floor(totalItems.length * 0.9); // Keep 10% for bot/admin
-    const winnerItems = totalItems.slice(0, itemSplitIndex);
-    const adminItems = totalItems.slice(itemSplitIndex);
+    // const totalItems = winnerParticipant.participant.items;
+    // const itemSplitIndex = Math.floor(totalItems.length * 0.9); // Keep 10% for bot/admin
+    // const winnerItems = totalItems.slice(0, itemSplitIndex);
+    // const adminItems = totalItems.slice(itemSplitIndex);
 
     // Transfer 90% of items to winner, and keep 10% for the bot
-    await transferWinnings(winnerParticipant.participant.user, winnerItems, adminItems);
+    await transferWinnings(winnerParticipant.participant.user);
 
     // Update the jackpot with the winner
     jackpot.status = 'completed';
