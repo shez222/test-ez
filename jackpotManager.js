@@ -85,6 +85,7 @@ const sendTradeOffer = (offer) => {
 /**
  * Transfer items based on winner distribution (90% to the winner, 10% kept in the bot)
  */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const transferWinnings = async (winner) => {
   try {
     // Validate Winner's Trade URL
