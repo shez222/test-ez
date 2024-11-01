@@ -180,7 +180,7 @@ async function endRound() {
     const adminItems = totalItems.slice(itemSplitIndex);
 
     // Transfer 90% of items to winner, and keep 10% for the bot
-    // await transferWinnings(winnerParticipant.participant.user, winnerItems, adminItems);
+    await transferWinnings(winnerParticipant.participant.user, winnerItems, adminItems);
 
     // Update the jackpot with the winner
     jackpot.status = 'completed';

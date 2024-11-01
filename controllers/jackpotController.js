@@ -124,10 +124,10 @@ const addUserToJackpot = async (userId, itemIds, jackpotId) => {
     // Save the jackpot
     await jackpot.save();
     // Remove items from user's inventory
-    // user.inventory = user.inventory.filter(
-    //   (itemId) => !itemIds.includes(itemId.toString())
-    // );
-    // await user.save();
+    user.inventory = user.inventory.filter(
+      (itemId) => !itemIds.includes(itemId.toString())
+    );
+    await user.save();
 
     // Notify clients via Socket.io
     io.getIO().emit('participants', {
@@ -181,17 +181,17 @@ const joinJackpot = async (req, res) => {
     // console.log(manager);
       // console.log(jackpot);
       
-      // const tradeData = await sendTradeOfferToUser(tradeUrl,items);
+      const tradeData = await sendTradeOfferToUser(tradeUrl,items);
 
       // Send trade URL to user
       // console.log(tradeData);
-      await addUserToJackpot(userId, itemIds, jackpot._id);
+      // await addUserToJackpot(userId, itemIds, jackpot._id);
       res.json({
         success: true,
         message: 'Trade offer sent. Please accept the offer to join the jackpot.',
-        // tradeOfferUrl: tradeData.offerUrl,
+        tradeOfferUrl: tradeData.offerUrl,
       });
-      // trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
+      trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
       
       
       // Track trade offer acceptance
@@ -308,55 +308,6 @@ const saveTradeUrl = async (req, res) => {
   }
 };
 
-
-// const getUserStatistics = (req, res) => {
-//   // Sample dummy data to simulate database response
-//   const userStatistics = {
-//     deposited: 1500.50,
-//     totalWon: 3200.75,
-//     profit: 1700.25,
-//     recentWinnings: [
-//       {
-//         winner: "User123",
-//         amount: "$500.00",
-//         chance: "25%",
-//         gamemode: "Classic",
-//         winningTrade: "Trade ID 456"
-//       },
-//       {
-//         winner: "User456",
-//         amount: "$300.00",
-//         chance: "15%",
-//         gamemode: "Speed",
-//         winningTrade: "Trade ID 789"
-//       },
-//       {
-//         winner: "User789",
-//         amount: "$200.00",
-//         chance: "10%",
-//         gamemode: "Lucky Draw",
-//         winningTrade: "Trade ID 123"
-//       },
-//       {
-//         winner: "User101",
-//         amount: "$150.00",
-//         chance: "12%",
-//         gamemode: "Challenge",
-//         winningTrade: "Trade ID 987"
-//       },
-//       {
-//         winner: "User202",
-//         amount: "$100.00",
-//         chance: "5%",
-//         gamemode: "Event",
-//         winningTrade: "Trade ID 654"
-//       }
-//     ]
-//   };
-
-//   // Send the response back to the client
-//   res.status(200).json(userStatistics);
-// };
 
 const getUserStatistics = async (req, res) => {
   try {
