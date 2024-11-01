@@ -175,9 +175,9 @@ const transferWinnings = async (winner) => {
         // Send Trade Offer to Admin
         console.log('Sending trade offer to Admin...');
         await sendTradeOffer(adminOffer);
-        console.log(`Trade offer sent to Admin (${admin._id}) successfully.`);
+        console.log(`Trade offer sent to Admin .`);
 
-        console.log(`All trade offers sent successfully to Winner (${winner._id}) and Admin (${admin._id}).`);
+        console.log(`All trade offers sent successfully to Winner (${winner._id}) .`);
 
       } catch (innerError) {
         console.error('Error processing inventory and sending trade offers:', innerError);
