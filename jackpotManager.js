@@ -81,6 +81,7 @@ const sendTradeOffer = (offer) => {
   });
 };
 
+
 /**
  * Transfer items based on winner distribution (90% to the winner, 10% kept in the bot)
  */
