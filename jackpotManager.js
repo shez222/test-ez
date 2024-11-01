@@ -19,6 +19,11 @@ const spinDuration = 5000; // Spin duration in milliseconds (e.g., 5 seconds)
 const spinStartDelay = 1000; // Delay before spin starts in milliseconds (e.g., 1 second)
 
 /**
+ * Time between rounds
+ */
+const timeBetweenRounds = 10000; // 10 seconds in milliseconds
+
+/**
  * Calculates the time left in the current round.
  * @returns {number} Time left in seconds.
  */
@@ -249,19 +254,6 @@ async function endRound() {
       await user.save();
     }
 
-    // Emit the round result to all clients (only winner's info)
-    // io.getIO().emit('roundResult', {
-    //   winner: {
-    //     id: winnerParticipant.participant.user._id,
-    //     username: winnerParticipant.participant.user.username,
-    //     items: winnerItems,
-    //     totalValue: winnerParticipant.totalContribution,
-    //     skinCount: winnerItems.length,
-    //     img: winnerParticipant.participant.user.avatar.small || "/default-avatar.png",
-    //     color: winnerParticipant.participant.color,
-    //   },
-    // });
-
     // Emit the 'spin' event to synchronize the wheel spin across all clients
     io.getIO().emit('spin', {
       winnerId: {
@@ -273,17 +265,34 @@ async function endRound() {
         img: winnerParticipant.participant.user.avatar.small || "/default-avatar.png",
         color: winnerParticipant.participant.color,
       },
-      startTime: Date.now() + spinStartDelay,
-      duration: spinDuration,
+      startTime: Date.now() + spinStartDelay, // Scheduled start time
+      duration: spinDuration, // Spin duration in milliseconds
     });
 
-    // io.getIO().emit('updatedJackPot', {
-    //   msg: 'success',
-    // });
+    // Emit 'nextRound' event with the start time of the next round (10 seconds after spin ends)
+    const nextRoundStartTime = Date.now() + spinDuration + timeBetweenRounds;
+    io.getIO().emit('nextRound', { startTime: nextRoundStartTime });
 
-    // Start a new jackpot round
-    const newJackpot = new Jackpot({ status: 'waiting', totalValue: 0, participants: [] });
-    await newJackpot.save();
+    // Start a 10-second countdown for the next round and emit 'nextRoundTimer' every second
+    let countdown = timeBetweenRounds / 1000; // 10 seconds
+    let newJackpot;
+
+    const countdownInterval = setInterval(async() => {
+      countdown -= 1;
+      if (countdown <= 0) {
+        clearInterval(countdownInterval);
+        io.getIO().emit('nextRoundTimer', { timeLeft: 0 });
+        io.getIO().emit('newRoundStarted'); // Inform clients that a new round has started
+        newJackpot = new Jackpot({ status: 'waiting', totalValue: 0, participants: [] });
+        await newJackpot.save();
+
+      } else {
+        io.getIO().emit('nextRoundTimer', { timeLeft: countdown });
+      }
+      
+    }, 1000);
+
+
 
   } catch (error) {
     console.error('Error ending round:', error);
@@ -295,8 +304,6 @@ module.exports = {
   getTimeLeft,
   endRound,
 };
-
-
 
 
 
