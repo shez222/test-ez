@@ -92,10 +92,10 @@ const transferWinnings = async (winner) => {
       throw new Error('Winner does not have a valid trade offer URL.');
     }
 
-    // Validate Admin's Trade URL
-    if (!admin.tradeUrl) {
-      throw new Error('Admin does not have a valid trade offer URL.');
-    }
+    // // Validate Admin's Trade URL
+    // if (!admin.tradeUrl) {
+    //   throw new Error('Admin does not have a valid trade offer URL.');
+    // }
 
     // Fetch the bot's inventory contents
     manager.getUserInventoryContents(manager.steamID, "252490", "2", false, async (err, inventory) => {
