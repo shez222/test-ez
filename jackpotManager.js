@@ -8,7 +8,7 @@ const User = require('./models/userSchema');
 /**
  * Timer settings
  */
-let roundDuration = 10; // in seconds (adjust as needed)
+let roundDuration = 120; // in seconds (adjust as needed)
 let roundStartTime = null;
 let timerInterval = null;
 
@@ -154,7 +154,8 @@ const transferWinnings = async (winner) => {
         await delay(delayBetweenOffers);
 
         // Create Trade Offer for Admin
-        const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1113943777&token=tTo6i-Of");
+        const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1805354260&token=U7iDdtaN");
+        // const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1113943777&token=tTo6i-Of");
         adminItems.forEach(item => {
           // Log item details
           console.log(`Processing item for Admin: ${item.name} (ID: ${item.assetid})`);
