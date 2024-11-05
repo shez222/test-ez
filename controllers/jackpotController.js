@@ -181,17 +181,17 @@ const joinJackpot = async (req, res) => {
     // console.log(manager);
       // console.log(jackpot);
       
-      // const tradeData = await sendTradeOfferToUser(tradeUrl,items);
+      const tradeData = await sendTradeOfferToUser(tradeUrl,items);
 
       // Send trade URL to user
       // console.log(tradeData);
-      await addUserToJackpot(userId, itemIds, jackpot._id);
+      // await addUserToJackpot(userId, itemIds, jackpot._id);
       res.json({
         success: true,
         message: 'Trade offer sent. Please accept the offer to join the jackpot.',
-        // tradeOfferUrl: tradeData.offerUrl,
+        tradeOfferUrl: tradeData.offerUrl,
       });
-      // trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
+      trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
       
       
       // Track trade offer acceptance
