@@ -181,17 +181,17 @@ const joinJackpot = async (req, res) => {
     // console.log(manager);
       // console.log(jackpot);
       
-      const tradeData = await sendTradeOfferToUser(tradeUrl,items);
+      // const tradeData = await sendTradeOfferToUser(tradeUrl,items);
 
       // Send trade URL to user
       // console.log(tradeData);
-      // await addUserToJackpot(userId, itemIds, jackpot._id);
+      await addUserToJackpot(userId, itemIds, jackpot._id);
       res.json({
         success: true,
         message: 'Trade offer sent. Please accept the offer to join the jackpot.',
-        tradeOfferUrl: tradeData.offerUrl,
+        // tradeOfferUrl: tradeData.offerUrl,
       });
-      trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
+      // trackTradeOffer(tradeData.offerId, userId, itemIds, jackpot._id);
       
       
       // Track trade offer acceptance
@@ -235,13 +235,9 @@ const getJackpotStatus = async (req, res) => {
 // Get Jackpot History
 const getJackpotHistory = async (req, res) => {
   try {
-    // Calculate the date and time for 24 hours ago from now
-    console.log("reached");
     
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    // console.log(twentyFourHoursAgo);
     
-    // Fetch all jackpots with status 'completed' and created within the last 24 hours
     const jackpots = await Jackpot.find({
       status: 'completed',
       createdAt: { $gte: twentyFourHoursAgo }, // Filter for jackpots created in the last 24 hours
@@ -263,18 +259,21 @@ const getJackpotHistory = async (req, res) => {
     if (!jackpots || jackpots.length === 0) {
       return res.status(404).json({ error: 'No completed jackpots found in the last 24 hours' });
     }
-
-    // Optional: Filter out participants with null users (if any)
-    // const filteredJackpots = jackpots.map(jackpot => {
-    //   const validParticipants = jackpot.participants.filter(participant => participant.user !== null);
-    //   return { ...jackpot.toObject(), participants: validParticipants };
-    // });
-    
     
     // Respond with the filtered jackpots data
     res.status(200).json(jackpots);
   } catch (error) {
     console.error('Error fetching jackpot history:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getLastFourJackpots = async (req, res) => {
+  try {
+    const jackpots = await Jackpot.find({ status: 'completed' }).limit(4);
+    res.json(jackpots);
+  } catch (error) {
+    console.error('Error fetching last four jackpots:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -361,7 +360,8 @@ module.exports = {
   getJackpotStatus,
   getJackpotHistory,
   saveTradeUrl,
-  getUserStatistics
+  getUserStatistics,
+  getLastFourJackpots
 };
 
 

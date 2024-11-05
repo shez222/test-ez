@@ -11,6 +11,7 @@ router.get('/status', jackpotController.getJackpotStatus);
 router.get('/history', jackpotController.getJackpotHistory);
 router.post('/save-trade-url', isAuth, jackpotController.saveTradeUrl);
 router.get("/statistics", isAuth, jackpotController.getUserStatistics);
+router.get("/last-four-jackpots", isAuth, jackpotController.getLastFourJackpots);
 
 
 module.exports = router;
