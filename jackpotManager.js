@@ -372,7 +372,9 @@ async function endRound() {
       startTime: Date.now() + spinStartDelay, // Scheduled start time
       duration: spinDuration, // Spin duration in milliseconds
     });
-
+    io.getIO().emit('newJackPot', {
+      msg: 'success',
+    });
     // Emit 'nextRound' event with the start time of the next round (10 seconds after spin ends)
     const nextRoundStartTime = Date.now() + spinDuration + timeBetweenRounds;
     io.getIO().emit('nextRound', { startTime: nextRoundStartTime });

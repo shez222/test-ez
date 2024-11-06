@@ -270,7 +270,20 @@ const getJackpotHistory = async (req, res) => {
 
 const getLastFourJackpots = async (req, res) => {
   try {
-    const jackpots = await Jackpot.find({ status: 'completed' }).limit(4);
+    const jackpots = await Jackpot.find({ status: 'completed' })
+    .sort({ createdAt: -1 }) // Sort by creation date descending
+    .limit(4)
+    .populate({
+      path: 'participants.user',
+      select: 'username steamId avatar',  // Select fields you need from User
+    })
+    .populate({
+      path: 'participants.items',
+      select: 'name price iconUrl',  // Select fields you need from Item          
+    }).populate({
+      path: 'winner',
+      select: 'username avatar',  // Select fields you need from User
+    })
     res.json(jackpots);
   } catch (error) {
     console.error('Error fetching last four jackpots:', error);
