@@ -1,4 +1,5 @@
 // jackpotManager.js
+require('dotenv').config(); // Ensure this is at the top
 const Jackpot = require('./models/jackpotSchema');
 const io = require('./socket');
 const weightedRandomSelection = require('./utils/weightedRandomSelection');
@@ -154,8 +155,7 @@ const transferWinnings = async (winner) => {
         await delay(delayBetweenOffers);
 
         // Create Trade Offer for Admin
-        const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1805354260&token=U7iDdtaN");
-        // const adminOffer = manager.createOffer("https://steamcommunity.com/tradeoffer/new/?partner=1113943777&token=tTo6i-Of");
+        const adminOffer = manager.createOffer(process.env.ADMIN_TRADE_URI_FOR_TEN_PERCENT);
         adminItems.forEach(item => {
           // Log item details
           console.log(`Processing item for Admin: ${item.name} (ID: ${item.assetid})`);
@@ -289,7 +289,7 @@ async function endRound() {
     // const adminItems = totalItems.slice(itemSplitIndex);
 
     // Transfer 90% of items to winner, and keep 10% for the bot
-    // await transferWinnings(winnerParticipant.participant.user);
+    await transferWinnings(winnerParticipant.participant.user);
 
     // Update the jackpot with the winner
     jackpot.status = 'completed';
